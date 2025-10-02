@@ -18,6 +18,16 @@ const server = http.createServer((req, res) => {
     if(query.level){
         const level = query.level;
         nowlevel = parseInt(level) ? parseInt(level) : 0;
+
+        if(level < stop){
+          stopNow = true;
+          startNow = false;
+        }
+
+        if(level > start){
+          startNow = true;
+          stopNow = false;
+        }
     }
     let response = {
         stop: stop,
