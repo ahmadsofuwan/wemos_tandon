@@ -78,6 +78,10 @@ const server = http.createServer((req, res) => {
   //matikan pada saat ini
   if (req.method === 'GET' && pathname === '/setstop') {
     stopNow = query.status ? query.status:false;
+    if(stopNow){
+        startNow = false;
+    }
+
     let response = {
         status: stopNow,
     }
@@ -89,6 +93,9 @@ const server = http.createServer((req, res) => {
   //hidupkan pada saat ini
   if (req.method === 'GET' && pathname === '/setstart') {
     startNow = query.status ? query.status:false;
+    if(startNow){
+        stopNow = false;
+    }
     let response = {
         status: startNow,
     }
