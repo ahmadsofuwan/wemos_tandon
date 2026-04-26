@@ -154,6 +154,17 @@
         color: white;
         opacity: 0.7;
       }
+      #estimation {
+        background: rgba(0, 210, 255, 0.1);
+        border: 1px solid rgba(0, 210, 255, 0.2);
+        padding: 0.8rem;
+        border-radius: 1rem;
+        margin-top: 1rem;
+        font-size: 1rem;
+        color: var(--primary);
+        font-weight: 400;
+        display: none; /* Akan muncul otomatis saat ada data */
+      }
     </style>
   </head>
   <body>
@@ -167,7 +178,7 @@
       </div>
 
       <div id="pumpStatus" class="badge badge-off">PUMP OFF</div>
-      <div id="estimation" style="font-size: 0.85rem; margin-top: 5px; color: var(--primary); opacity: 0.8; font-weight: 300;">Calculating estimation...</div>
+      <div id="estimation">Calculating...</div>
 
       <div class="status-grid">
         <div class="status-card">
@@ -238,29 +249,31 @@
                 // Estimasi Waktu
                 const estElement = document.getElementById('estimation');
                 if (lastLevel !== null && lastTime !== null) {
-                    const timeDiff = (currentTime - lastTime) / 1000; // detik
-                    const levelDiff = lastLevel - currentLevel; // positif jika air naik (cm)
+                    const timeDiff = (currentTime - lastTime) / 1000;
+                    const levelDiff = lastLevel - currentLevel; 
                     
-                    if (timeDiff > 0 && Math.abs(levelDiff) > 0) {
-                        const currentRate = levelDiff / timeDiff; // cm per detik
+                    if (timeDiff > 0) {
+                        const currentRate = levelDiff / timeDiff;
+                        // Smoothing agar tidak fluktuatif
+                        smoothRate = (smoothRate * 0.7) + (currentRate * 0.3);
                         
-                        // Filtering dasar agar angka tidak loncat (Moving Average)
-                        smoothRate = (smoothRate * 0.8) + (currentRate * 0.2);
-                        
-                        if (smoothRate > 0.001 && startNow.status) {
+                        if (smoothRate > 0.01) { // Air sedang naik
+                            estElement.style.display = 'block';
                             const remainingDistance = currentLevel - status.stop;
                             if (remainingDistance > 0) {
                                 const remainingSeconds = remainingDistance / smoothRate;
                                 const mins = Math.floor(remainingSeconds / 60);
                                 const secs = Math.floor(remainingSeconds % 60);
-                                estElement.innerText = `Estimated to full: ${mins}m ${secs}s`;
+                                estElement.innerHTML = `⏱ Estimasi Penuh: <b>${mins}m ${secs}s</b>`;
                             } else {
-                                estElement.innerText = "Tank is Full";
+                                estElement.innerHTML = "✅ Tandon Sudah Penuh";
                             }
-                        } else if (startNow.status) {
-                            estElement.innerText = "Stagnant / No change detected";
+                        } else if (smoothRate < -0.01) { // Air sedang turun (dipakai)
+                            estElement.style.display = 'block';
+                            estElement.innerHTML = "📉 Air sedang berkurang...";
                         } else {
-                            estElement.innerText = "Pump is IDLE";
+                            // Jika stagnan, tidak usah tampilkan estimasi agar bersih
+                            estElement.style.display = 'none';
                         }
                     }
                 }
