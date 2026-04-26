@@ -173,15 +173,45 @@
           <div class="value" id="currentLevel">0</div>
         </div>
         <div class="status-card">
-          <div class="label">Thresholds</div>
-          <div class="value">
-            <span id="limitStop">0</span> - <span id="limitStart">0</span>
-          </div>
+          <div class="label">Range</div>
+          <div class="value"><span id="limitStop">0</span> - <span id="limitStart">0</span></div>
         </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--glass-border);">
+          <h3 style="font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 1rem; opacity: 0.8;">SETTINGS</h3>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+              <div style="flex: 1;">
+                  <span class="label">Stop At (Max)</span>
+                  <input type="number" id="inputStop" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 8px; color: white; border-radius: 8px;">
+              </div>
+              <div style="flex: 1;">
+                  <span class="label">Start At (Low)</span>
+                  <input type="number" id="inputStart" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 8px; color: white; border-radius: 8px;">
+              </div>
+          </div>
+          <button onclick="saveSettings()" style="width: 100%; background: var(--primary); border: none; padding: 10px; color: var(--bg); font-weight: 600; border-radius: 10px; cursor: pointer; transition: 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+              Update Thresholds
+          </button>
       </div>
     </div>
 
     <script>
+      let isFirstLoad = true;
+
+      async function saveSettings() {
+          const startVal = document.getElementById('inputStart').value;
+          const stopVal = document.getElementById('inputStop').value;
+          
+          try {
+              const res = await fetch(`/setlevel?start=${startVal}&stop=${stopVal}`);
+              if(res.ok) alert('Settings Updated!');
+          } catch (e) {
+              alert('Failed to update settings');
+          }
+      }
+
       async function updateStatus() {
         try {
           const res = await fetch("/status");
@@ -196,6 +226,13 @@
           document.getElementById("currentLevel").innerText = status.level;
           document.getElementById("limitStart").innerText = status.start;
           document.getElementById("limitStop").innerText = status.stop;
+
+          // Isi input saat pertama kali load
+          if(isFirstLoad) {
+              document.getElementById('inputStart').value = status.start;
+              document.getElementById('inputStop').value = status.stop;
+              isFirstLoad = false;
+          }
 
           const range = status.start - status.stop;
           let percent = ((status.start - status.level) / range) * 100;

@@ -60,17 +60,17 @@ const server = http.createServer((req, res) => {
 
   //setting level
   if (req.method === 'GET' && pathname === '/setlevel') {
-     start = query.start;
-     stop = query.stop;
+     start = parseInt(query.start) || start;
+     stop = parseInt(query.stop) || stop;
     
-    let response = {
-        start: start,
-        stop: stop,
-        level: nowlevel
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(response));
-    return;
+     let response = {
+         start: start,
+         stop: stop,
+         level: nowlevel
+     }
+     res.writeHead(200, { 'Content-Type': 'application/json' });
+     res.end(JSON.stringify(response));
+     return;
   }
 
   //check stop status
