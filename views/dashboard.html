@@ -230,15 +230,32 @@
         let initialLevel = null;
         let smoothRate = 0; // cm per second
 
-        // ... (saveSettings remains the same)
+        async function saveSettings() {
+            const startVal = document.getElementById('inputStart').value;
+            const stopVal = document.getElementById('inputStop').value;
+            try {
+                const res = await fetch(`/setlevel?start=${startVal}&stop=${stopVal}`);
+                if(res.ok) alert('Settings Updated!');
+            } catch (e) {
+                alert('Failed to update settings');
+            }
+        }
 
         async function updateStatus() {
             try {
-                // ... (status, startNow, stopNow fetch remains same)
+                const res = await fetch('/status');
+                const status = await res.json();
                 
+                const startRes = await fetch('/start');
+                const startNow = await startRes.json();
+                
+                const stopRes = await fetch('/stop');
+                const stopNow = await stopRes.json();
+
                 const currentLevel = status.level;
                 const currentTime = Date.now();
 
+                // Set initial level for analysis
                 if (initialLevel === null && currentLevel > 0) initialLevel = currentLevel;
 
                 document.getElementById('currentLevel').innerText = currentLevel;
@@ -261,7 +278,6 @@
                         const currentRate = levelDiff / timeDiff;
                         smoothRate = (smoothRate * 0.7) + (currentRate * 0.3);
                         
-                        // Update fill speed (convert to cm/min)
                         const speedMin = (smoothRate * 60);
                         document.getElementById('fillSpeed').innerText = `${speedMin.toFixed(2)} cm/min`;
 
@@ -284,6 +300,7 @@
                         }
                     }
                 }
+                
                 lastLevel = currentLevel;
                 lastTime = currentTime;
 
