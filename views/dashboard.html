@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Water Level Dashboard</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #00d2ff;
+        --secondary: #3a7bd5;
+        --bg: #0f172a;
+        --glass: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Outfit", sans-serif;
+        background: var(--bg);
+        color: white;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle at top right, #1e293b, #0f172a);
+        overflow: hidden;
+      }
+      .container {
+        background: var(--glass);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        padding: 2.5rem;
+        border-radius: 2rem;
+        text-align: center;
+        width: 90%;
+        max-width: 450px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: fadeIn 1s ease-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h1 {
+        font-weight: 600;
+        margin-bottom: 2rem;
+        letter-spacing: 1px;
+        color: var(--primary);
+      }
+
+      .tank-container {
+        width: 180px;
+        height: 280px;
+        border: 4px solid var(--glass-border);
+        border-radius: 1.5rem;
+        margin: 0 auto 2rem;
+        position: relative;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.2);
+      }
+      .water {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: linear-gradient(to top, var(--secondary), var(--primary));
+        transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      .water::before {
+        content: "";
+        position: absolute;
+        top: -15px;
+        left: 0;
+        width: 200%;
+        height: 30px;
+        background: var(--primary);
+        border-radius: 40%;
+        animation: wave 4s infinite linear;
+        opacity: 0.8;
+      }
+      @keyframes wave {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
+
+      .percent-display {
+        font-size: 3rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      }
+      .status-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+      .status-card {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1rem;
+        border-radius: 1rem;
+        border: 1px solid var(--glass-border);
+      }
+      .label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+      }
+      .value {
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      .badge {
+        padding: 0.4rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-top: 0.5rem;
+      }
+      .badge-on {
+        background: #10b981;
+        color: white;
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+      }
+      .badge-off {
+        background: #ef4444;
+        color: white;
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>WATER LEVEL</h1>
+
+      <div class="percent-display" id="percentText">0%</div>
+
+      <div class="tank-container">
+        <div class="water" id="waterLevel" style="height: 0%"></div>
+      </div>
+
+      <div id="pumpStatus" class="badge badge-off">PUMP OFF</div>
+
+      <div class="status-grid">
+        <div class="status-card">
+          <div class="label">Current Level</div>
+          <div class="value" id="currentLevel">0</div>
+        </div>
+        <div class="status-card">
+          <div class="label">Thresholds</div>
+          <div class="value">
+            <span id="limitStop">0</span> - <span id="limitStart">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      async function updateStatus() {
+        try {
+          const res = await fetch("/status");
+          const status = await res.json();
+
+          const startRes = await fetch("/start");
+          const startNow = await startRes.json();
+
+          const stopRes = await fetch("/stop");
+          const stopNow = await stopRes.json();
+
+          document.getElementById("currentLevel").innerText = status.level;
+          document.getElementById("limitStart").innerText = status.start;
+          document.getElementById("limitStop").innerText = status.stop;
+
+          const range = status.start - status.stop;
+          let percent = ((status.start - status.level) / range) * 100;
+          percent = Math.max(0, Math.min(100, Math.round(percent)));
+
+          document.getElementById("percentText").innerText = percent + "%";
+          document.getElementById("waterLevel").style.height = percent + "%";
+
+          const pumpBadge = document.getElementById("pumpStatus");
+          if (startNow.status && !stopNow.status) {
+            pumpBadge.innerText = "PUMP FILLING";
+            pumpBadge.className = "badge badge-on";
+          } else {
+            pumpBadge.innerText = "PUMP IDLE";
+            pumpBadge.className = "badge badge-off";
+          }
+        } catch (e) {
+          console.error("Gagal mengambil data", e);
+        }
+      }
+      setInterval(updateStatus, 2000);
+      updateStatus();
+    </script>
+  </body>
+</html>

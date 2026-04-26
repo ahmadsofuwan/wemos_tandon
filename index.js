@@ -1,6 +1,8 @@
 require('dotenv').config();
 const http = require('http');
 const url = require('url');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 3000;
 let stop = 10;
@@ -113,6 +115,22 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify(response));
     return;
   }
+  // Dashboard Interface (Melayani file HTML terpisah)
+  if (req.method === 'GET' && pathname === '/dashboard') {
+    const filePath = path.join(__dirname, 'views', 'dashboard.html');
+    
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to load dashboard view' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(content);
+    });
+    return;
+  }
+
   // 404 untuk route lain
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not Found' }));
