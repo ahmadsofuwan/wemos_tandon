@@ -198,6 +198,10 @@
               <span style="font-size: 0.85rem; opacity: 0.8;">Fill Speed:</span>
               <span id="fillSpeed" style="font-weight: 600; color: #10b981;">0.00 cm/min</span>
           </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+              <span style="font-size: 0.85rem; opacity: 0.8;">Last 1cm took:</span>
+              <span id="timePerCm" style="font-weight: 600; color: #f59e0b;">---</span>
+          </div>
           <div style="display: flex; justify-content: space-between;">
               <span style="font-size: 0.85rem; opacity: 0.8;">Water Gained:</span>
               <span id="waterGained" style="font-weight: 600; color: var(--primary);">0.00 cm</span>
@@ -228,6 +232,8 @@
         let lastLevel = null;
         let lastTime = null;
         let initialLevel = null;
+        let anchorLevel = null;
+        let anchorTime = null;
         let smoothRate = 0; // cm per second
 
         async function saveSettings() {
@@ -256,11 +262,28 @@
                 const currentTime = Date.now();
 
                 // Set initial level for analysis
-                if (initialLevel === null && currentLevel > 0) initialLevel = currentLevel;
+                if (initialLevel === null && currentLevel > 0) {
+                    initialLevel = currentLevel;
+                    anchorLevel = currentLevel;
+                    anchorTime = currentTime;
+                }
 
                 document.getElementById('currentLevel').innerText = currentLevel;
                 document.getElementById('limitStart').innerText = status.start;
                 document.getElementById('limitStop').innerText = status.stop;
+
+                // Analisis Per 1 CM
+                if (anchorLevel !== null && Math.abs(currentLevel - anchorLevel) >= 1) {
+                    const timeTook = (currentTime - anchorTime) / 1000; // detik
+                    const cmChanged = Math.abs(currentLevel - anchorLevel);
+                    const secPerCm = timeTook / cmChanged;
+                    
+                    document.getElementById('timePerCm').innerText = `${secPerCm.toFixed(1)} sec/cm`;
+                    
+                    // Reset anchor untuk cm berikutnya
+                    anchorLevel = currentLevel;
+                    anchorTime = currentTime;
+                }
 
                 // Hitung Water Gained
                 if (initialLevel !== null) {
