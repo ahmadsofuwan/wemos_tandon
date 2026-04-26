@@ -167,6 +167,7 @@
       </div>
 
       <div id="pumpStatus" class="badge badge-off">PUMP OFF</div>
+      <div id="estimation" style="font-size: 0.85rem; margin-top: 5px; color: var(--primary); opacity: 0.8; font-weight: 300;">Calculating estimation...</div>
 
       <div class="status-grid">
         <div class="status-card">
@@ -199,65 +200,101 @@
     </div>
 
     <script>
-      let isFirstLoad = true;
+        let isFirstLoad = true;
+        let lastLevel = null;
+        let lastTime = null;
+        let smoothRate = 0; // cm per second
 
-      async function saveSettings() {
-          const startVal = document.getElementById('inputStart').value;
-          const stopVal = document.getElementById('inputStop').value;
-          
-          try {
-              const res = await fetch(`/setlevel?start=${startVal}&stop=${stopVal}`);
-              if(res.ok) alert('Settings Updated!');
-          } catch (e) {
-              alert('Failed to update settings');
-          }
-      }
-
-      async function updateStatus() {
-        try {
-          const res = await fetch("/status");
-          const status = await res.json();
-
-          const startRes = await fetch("/start");
-          const startNow = await startRes.json();
-
-          const stopRes = await fetch("/stop");
-          const stopNow = await stopRes.json();
-
-          document.getElementById("currentLevel").innerText = status.level;
-          document.getElementById("limitStart").innerText = status.start;
-          document.getElementById("limitStop").innerText = status.stop;
-
-          // Isi input saat pertama kali load
-          if(isFirstLoad) {
-              document.getElementById('inputStart').value = status.start;
-              document.getElementById('inputStop').value = status.stop;
-              isFirstLoad = false;
-          }
-
-          const range = status.start - status.stop;
-          let percent = ((status.start - status.level) / range) * 100;
-          
-          // Batasi 0 - 100%
-          percent = Math.max(0, Math.min(100, percent));
-          
-          document.getElementById("percentText").innerText = percent.toFixed(2) + "%";
-          document.getElementById("waterLevel").style.height = percent + "%";
-
-          const pumpBadge = document.getElementById("pumpStatus");
-          if (startNow.status && !stopNow.status) {
-            pumpBadge.innerText = "PUMP FILLING";
-            pumpBadge.className = "badge badge-on";
-          } else {
-            pumpBadge.innerText = "PUMP IDLE";
-            pumpBadge.className = "badge badge-off";
-          }
-        } catch (e) {
-          console.error("Gagal mengambil data", e);
+        async function saveSettings() {
+            const startVal = document.getElementById('inputStart').value;
+            const stopVal = document.getElementById('inputStop').value;
+            
+            try {
+                const res = await fetch(`/setlevel?start=${startVal}&stop=${stopVal}`);
+                if(res.ok) alert('Settings Updated!');
+            } catch (e) {
+                alert('Failed to update settings');
+            }
         }
-      }
-      setInterval(updateStatus, 2000);
-      updateStatus();
+
+        async function updateStatus() {
+            try {
+                const res = await fetch('/status');
+                const status = await res.json();
+                
+                const startRes = await fetch('/start');
+                const startNow = await startRes.json();
+                
+                const stopRes = await fetch('/stop');
+                const stopNow = await stopRes.json();
+
+                const currentLevel = status.level;
+                const currentTime = Date.now();
+
+                document.getElementById('currentLevel').innerText = currentLevel;
+                document.getElementById('limitStart').innerText = status.start;
+                document.getElementById('limitStop').innerText = status.stop;
+
+                // Estimasi Waktu
+                const estElement = document.getElementById('estimation');
+                if (lastLevel !== null && lastTime !== null) {
+                    const timeDiff = (currentTime - lastTime) / 1000; // detik
+                    const levelDiff = lastLevel - currentLevel; // positif jika air naik (cm)
+                    
+                    if (timeDiff > 0 && Math.abs(levelDiff) > 0) {
+                        const currentRate = levelDiff / timeDiff; // cm per detik
+                        
+                        // Filtering dasar agar angka tidak loncat (Moving Average)
+                        smoothRate = (smoothRate * 0.8) + (currentRate * 0.2);
+                        
+                        if (smoothRate > 0.001 && startNow.status) {
+                            const remainingDistance = currentLevel - status.stop;
+                            if (remainingDistance > 0) {
+                                const remainingSeconds = remainingDistance / smoothRate;
+                                const mins = Math.floor(remainingSeconds / 60);
+                                const secs = Math.floor(remainingSeconds % 60);
+                                estElement.innerText = `Estimated to full: ${mins}m ${secs}s`;
+                            } else {
+                                estElement.innerText = "Tank is Full";
+                            }
+                        } else if (startNow.status) {
+                            estElement.innerText = "Stagnant / No change detected";
+                        } else {
+                            estElement.innerText = "Pump is IDLE";
+                        }
+                    }
+                }
+                lastLevel = currentLevel;
+                lastTime = currentTime;
+
+                if(isFirstLoad) {
+                    document.getElementById('inputStart').value = status.start;
+                    document.getElementById('inputStop').value = status.stop;
+                    isFirstLoad = false;
+                }
+
+                const range = status.start - status.stop;
+                let percent = ((status.start - currentLevel) / range) * 100;
+                percent = Math.max(0, Math.min(100, percent));
+                
+                document.getElementById('percentText').innerText = percent.toFixed(2) + '%';
+                document.getElementById('waterLevel').style.height = percent + '%';
+
+                const pumpBadge = document.getElementById('pumpStatus');
+                if (startNow.status && !stopNow.status) {
+                    pumpBadge.innerText = 'PUMP FILLING';
+                    pumpBadge.className = 'badge badge-on';
+                } else {
+                    pumpBadge.innerText = 'PUMP IDLE';
+                    pumpBadge.className = 'badge badge-off';
+                }
+
+            } catch (e) {
+                console.error("Gagal mengambil data", e);
+            }
+        }
+        setInterval(updateStatus, 2000);
+        updateStatus();
     </script>
   </body>
 </html>

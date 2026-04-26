@@ -5,11 +5,41 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+const LOG_FILE = path.join(__dirname, 'history.json');
+
+// Default Values
 let stop = 10;
 let start = 30;
 let nowlevel = 0;
 let stopNow = false;
 let startNow = false;
+
+// Load Settings from File (Persistence)
+if (fs.existsSync(SETTINGS_FILE)) {
+    try {
+        const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE));
+        stop = saved.stop || stop;
+        start = saved.start || start;
+        console.log(`[SYSTEM] Settings loaded: Stop@${stop}, Start@${start}`);
+    } catch (e) {
+        console.error("[SYSTEM] Failed to parse settings.json");
+    }
+}
+
+function saveSettings() {
+    const data = { stop, start };
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
+}
+
+function logData(level) {
+    const logEntry = {
+        time: new Date().toISOString(),
+        level: level
+    };
+    // Simpan history dalam format line-by-line JSON agar efisien
+    fs.appendFileSync(LOG_FILE, JSON.stringify(logEntry) + "\n");
+}
 
 const server = http.createServer((req, res) => {
   const { pathname, query } = url.parse(req.url, true);
@@ -18,8 +48,10 @@ const server = http.createServer((req, res) => {
   //main endpoint
   if (req.method === 'GET' && pathname === '/') {
     if(query.level){
-        const level = query.level;
-        nowlevel = parseInt(level) ? parseInt(level) : 0;
+        const level = parseInt(query.level) || 0;
+        nowlevel = level;
+        
+        logData(nowlevel); // Simpan ke file history.json
         
         let action = "NORMAL";
 
@@ -62,6 +94,8 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && pathname === '/setlevel') {
      start = parseInt(query.start) || start;
      stop = parseInt(query.stop) || stop;
+     
+     saveSettings(); // Simpan permanen ke settings.json
     
      let response = {
          start: start,
