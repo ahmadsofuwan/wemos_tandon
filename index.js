@@ -20,16 +20,22 @@ const server = http.createServer((req, res) => {
     if(query.level){
         const level = query.level;
         nowlevel = parseInt(level) ? parseInt(level) : 0;
+        
+        let action = "NORMAL";
 
         if(level < stop){
           stopNow = true;
           startNow = false;
+          action = "STOP PUMP (Tandon Penuh)";
         }
 
         if(level > start){
           startNow = true;
           stopNow = false;
+          action = "START PUMP (Tandon Kosong)";
         }
+
+        console.log(`[${new Date().toLocaleTimeString()}] Level Diterima: ${nowlevel} | Status: ${action}`);
     }
     let response = {
         stop: stop,
